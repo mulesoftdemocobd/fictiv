@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:slack="http://www.mulesoft.org/schema/mule/slack" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:redshift="http://www.mulesoft.org/schema/mule/redshift"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/redshift http://www.mulesoft.org/schema/mule/redshift/current/mule-redshift.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/slack http://www.mulesoft.org/schema/mule/slack/current/mule-slack.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="0e40dc58-0ab3-46ad-8eb7-125a221aa800" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<redshift:config name="Amazon_Redshift_Connector_Config" doc:name="Amazon Redshift Connector Config" doc:id="07983026-2f5b-4170-96a2-327954af95bc" >
+		<redshift:basic-connection clusterId="mulesoft.cygfdc3lp6ie" region="us-west-1" database="fictiv" user="awsuser" password="KimHyunJun9729982453" >
+			<redshift:connection-properties >
+				<redshift:connection-property key="ssl" value="true" />
+				<redshift:connection-property key="sslfactory" value="org.postgresql.ssl.NonValidatingFactory" />
+			</redshift:connection-properties>
+		</redshift:basic-connection>
+	</redshift:config>
+	<slack:config name="Slack_Connector_Config" doc:name="Slack Connector Config" doc:id="65f7373f-f4eb-4519-af79-a72c273344e5" >
+		<slack:slack-auth-connection >
+			<slack:oauth-authorization-code consumerKey="3191756361507.3185117245846" consumerSecret="5f6a4930ad0f43448553e1bce98c28c6" resourceOwnerId="teja.nuvvula@gmail.com"/>
+			<slack:oauth-callback-config listenerConfig="HTTP_Listener_config" callbackPath="/callback" authorizePath="/authorize"/>
+		</slack:slack-auth-connection>
+	</slack:config>
+	<flow name="fictiv-pocFlow" doc:id="16571e76-16c9-49b0-906d-0909afcc0550" >
+		<http:listener doc:name="Listener" doc:id="099af6e7-b9f0-4111-b64d-548e0a3c6de3" config-ref="HTTP_Listener_config" path="/redshift"/>
+		<redshift:select doc:name="Select" doc:id="6db6af9e-9a65-4ebf-abcc-d37e6b14d6d6" config-ref="Amazon_Redshift_Connector_Config">
+			<redshift:sql ><![CDATA[select * from "public"."mulesoft_poc";]]></redshift:sql>
+		</redshift:select><ee:transform doc:name="Transform Message" doc:id="28bd7ee3-7c82-4198-a416-e1adcd842d58" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{	
+	channel: 'C035MP20MFU',
+	text: payload,
+	emailId: 'teja.nuvvula@gmail.com'
+	}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<slack:create-chatpost-message doc:name="Send Message" doc:id="18cfd3f0-5cf7-45f6-8d6e-41054aa02bd5" config-ref="Slack_Connector_Config"/>
+	</flow>
+</mule>
